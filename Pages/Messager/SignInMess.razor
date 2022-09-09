@@ -1,0 +1,45 @@
+﻿@using Blazored.Typeahead
+@using MessTals.Data
+@inject NavigationManager _NavigationManager
+@inject MessTals.Services.MessageServer _server
+
+<div class="d-flex flex-column container" style="background: #86b7fe;min-width: 388px; width: 600px">
+    <h3 class="d-flex ms-3 mt-3 mb-2">Login</h3>
+    <div class="d-flex d-inline-flex flex-row mt-2 mb-3">
+        <input type="checkbox" class="d-flex" @bind="_isNew" />
+        <p class="d-flex ms-1 me-2">New user?</p>
+        @if (_isNew)
+        {
+            <input @bind="_addUser" placeholder="Enter your name"/>
+        }
+        else
+        {
+            <BlazoredTypeahead SearchMethod="Search" @bind-Value="_name">
+                <SelectedTemplate>@context.Name</SelectedTemplate>
+                <ResultTemplate>@context.Name</ResultTemplate>
+            </BlazoredTypeahead>
+        }
+        <button class="btn btn-outline-primary ms-2 me-3" @onclick="SignIn">Login</button>
+    </div>
+</div>
+
+@code {
+    private List<User> _users;
+    private User _name;
+    private string _addUser;
+    private bool _isNew;
+    
+    private void SignIn()
+    {
+        _NavigationManager.NavigateTo($"inbox/{(_isNew? _addUser : _name.Name)}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await _server.GetUsers();
+    }
+
+    private async Task<IEnumerable<User>> Search(string searchFor)
+        => await Task.FromResult(
+            _users.Where(user => user.Name.ToLower().Contains(searchFor.ToLower())).ToList());
+}

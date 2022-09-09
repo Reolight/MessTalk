@@ -1,0 +1,68 @@
+﻿@using Blazored.Typeahead
+@using MessTals.Data
+@inject Services.MessageServer _server
+
+<div class="container d-flex flex-column" style="min-width: 350px;width: 600px">
+    @_err
+    @if (_isReply)
+    {
+        <p class="d-flex">
+            Reply to <b>@($" {Receiver}")</b>
+        </p>
+    }
+    else
+    {
+        <div class="d-flex flex-row" style="width: inherit">
+            <BlazoredTypeahead SearchMethod="Search" @bind-Value="_receiver">
+                        <SelectedTemplate>@context.Name</SelectedTemplate>
+                        <ResultTemplate>@context.Name</ResultTemplate>       
+                    </BlazoredTypeahead>
+        </div>
+    }
+    <div class="d-flex flex-row">
+        <textarea @bind="_content" aria-labelledby="Message" placeholder="Enter desired text" style="width: inherit;min-width: 350px"></textarea>
+    </div>
+    <button class="btn btn-outline-success" style="width: 100px" @onclick="Post">
+        Send
+    </button>
+</div>
+
+@code {
+
+    [Parameter] public string sender { get; set; }
+    private string _content = "";
+
+    [Parameter] public string? Receiver { get; set; }
+    private User? _receiver;
+    private bool _isReply;
+    private string _err ="";
+    private List<User> _users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await _server.GetUsers();
+        _isReply = Receiver is not null;
+    }
+
+    private bool Validate()
+    {
+        _err = "";
+        if (string.IsNullOrWhiteSpace(_content))
+            _err += "Content should not be empty. ";
+        if (!_isReply && _receiver is null)
+            _err += "Receiver name should not be empty. ";
+        return _err.Length == 0;
+    }
+
+    private async void Post()
+    {
+        if (!Validate()) return;
+        await _server.SendMessage(sender, _isReply? Receiver : _receiver.Name, _content);
+        _content = "";
+    } 
+    
+    private async Task<IEnumerable<User>> Search(string searchFor)
+        => await Task.FromResult(
+            _users.Where(user => user.Name.ToLower().Contains(searchFor.ToLower())).ToList());
+
+}

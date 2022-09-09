@@ -1,0 +1,83 @@
+﻿@page "/inbox/{UserName}"
+@using MessTals.Data
+@inject Services.MessageServer _server
+@inject IToastService _toastService
+
+<MailInput sender="@_user.Name" />
+
+<h3>Inbox (@(_user.Name))</h3>
+
+<div class="d-flex container w-75 flex-column bg-opacity-75" style="background: #bfe2e9;min-width: 400px;">
+    @foreach (string sender in _messages.Keys)
+    {
+        <div class="d-flex justify-content-around mb-2 mt-2 align-items-center" style="background: #e9ecef; height: 40px">
+            <div class="d-flex flex-row mb-2 mt-2">
+                <h4 class="d-flex">@sender</h4>
+                <span class="d-flex badge bg-dark" style="height: 20px">@_messages[sender].Count</span>
+            </div>
+            <button class="btn btn-outline-primary d-flex" style="height: 30px"
+                    @onclick="() => _curSender = (_curSender is not null && _curSender.Equals(sender)) ? null : sender">
+                @if (_curSender is not null && _curSender.Equals(sender))
+                {
+                    <p class="d-flex">Hide</p>
+                }
+                else
+                {
+                    <p class="d-flex">Show</p>
+                }
+            </button>
+        </div>
+        
+        @if (_curSender is not null && _curSender.Equals(sender))
+        {
+            <MailInput sender=@_user.Name Receiver=@_curSender />
+            @foreach (Message message in _messages[sender].OrderByDescending(mess => mess.Posted))
+            {
+                <Mail message="message" IsSender=@(message.Sender==_user.Name) />
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string UserName { get; set; }
+    private User _user;
+    private Dictionary<string, List<Message>> _messages = new();
+    private int _expandId = -1;
+    private string? _curSender;
+
+    private void SetUpMailbox()
+    {
+        foreach (Message message in _user.Messages)
+            AddMessage(message);
+    }
+
+    private void AddMessage(Message message)
+    {
+        string key = message.Sender == _user.Name ? message.Receiver.Name : message.Sender;
+        if (!_messages.ContainsKey(key))
+            _messages.Add(key, new List<Message>(new []{message}));
+        else
+            _messages[key].Add(message);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await _server.ConnectUser(Update, UserName);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _user = await _server.ConnectUser(Update, UserName);
+        Task setup = new Task(SetUpMailbox);
+        setup.Start();
+    }
+
+    private void Update(Message message)
+    {
+        AddMessage(message);
+        InvokeAsync(StateHasChanged);
+        if (_user.Name != message.Sender)
+            _toastService.ShowInfo(message.Content, message.Sender);
+    }
+}

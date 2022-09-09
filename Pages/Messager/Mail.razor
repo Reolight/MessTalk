@@ -1,0 +1,13 @@
+﻿@using MessTals.Data
+
+
+<div class="container d-flex flex-column w-75 mb-2 mt-2" style="background: #86b7fe; min-width:400px">
+    <h4 class="d-flex @(IsSender? "align-self-end":"")">by @message.Sender</h4>
+    <p class="d-flex @(IsSender? "align-self-end":"")">@message.Content</p>
+    <cite class="d-flex @(IsSender? "align-self-start":"align-self-end")">@message.Posted</cite>
+</div>
+
+@code {
+    [Parameter] public Message message { get; set; }
+    [Parameter] public bool IsSender { get; set; }
+}
